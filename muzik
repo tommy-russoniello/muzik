@@ -1,0 +1,140 @@
+#!/usr/bin/env ruby
+
+if ARGV.empty?
+  puts('Available commands:')
+  [
+    'sync',
+    'upload',
+    'tag',
+    'download',
+    'stage',
+    'init',
+    'config [FIELD=VALUE...]',
+    'refresh [cloud|local]',
+    'setup [cloud|local]'
+  ].each { |command| puts("  #{command}") }
+  exit(true)
+end
+
+if ARGV.first == 'init'
+  create_dir = lambda do |name|
+    Dir.mkdir(name) unless Dir.exist?(name)
+  end
+
+  directory = File.expand_path('~/.muzik')
+  create_dir.call(directory)
+  create_dir.call("#{directory}/download")
+  create_dir.call("#{directory}/upload")
+  create_dir.call("#{directory}/trash")
+  File.write("#{directory}/config.json", '{}') unless File.exists?("#{directory}/config.json")
+  exit(true)
+end
+
+require 'colorize'
+
+def boom(message)
+  STDERR.puts("#{'Muzik Error:'.red} #{message}")
+  exit(false)
+end
+
+location = File.expand_path('~/.muzik/config.json')
+boom('No config file found. Run `muzik init` to initialize it.') unless File.exists?(location)
+
+require 'json'
+
+begin
+  CONFIG = JSON.parse(File.read(location))
+rescue StandardError
+  boom('Error parsing config file.')
+end
+
+def instantiate(cloud: true)
+  require_relative './muzik'
+
+  Muzik.new(
+    apple_music: CONFIG['apple_music'],
+    cloud_url: (CONFIG['cloud_url'] if cloud),
+    google_drive_config_location: CONFIG['google_drive_config_location'],
+    local_path: CONFIG['local_path'],
+    upload_path: CONFIG['upload_path'],
+    trash_path: CONFIG['trash_path']
+  )
+end
+
+case ARGV.first
+when 'sync'
+  instantiate.sync
+when 'upload'
+  instantiate.upload
+when 'tag'
+  system('open', CONFIG['download_path'], '-a', CONFIG['tagging_app'])
+when 'download'
+  system(
+    'youtube-dl',
+    '-x',
+    '--audio-format',
+    'mp3',
+    '-o',
+    "#{CONFIG['download_path']}/%(title)s.%(ext)s",
+    CONFIG['new_music_playlist_url']
+  )
+  puts('done'.green)
+when 'stage'
+  path = "#{CONFIG['download_path']}/*.mp3"
+  file_count = Dir[path].size
+  Dir[path].each do |file_name|
+    system('mv', file_name, "#{CONFIG['upload_path']}/#{File.basename(file_name)}")
+  end
+
+  puts("#{file_count} file#{file_count == 1 ? '' : 's'} staged for upload.".green)
+when 'config'
+  begin
+    args = ARGV[1..].map { |arg| arg.split('=', 2) }.to_h
+  rescue ArgumentError
+    boom('Invalid arguments')
+  end
+
+  valid_args = %w[
+    apple_music
+    cloud_url
+    download_path
+    google_drive_config_location
+    local_path
+    new_music_playlist_url
+    upload_path
+    tagging_app
+    trash_path
+  ]
+  args.each { |arg, _| boom("Unkown argument: #{arg}") unless valid_args.include?(arg) }
+  args = CONFIG.merge(args)
+
+  directory = File.expand_path('~/.muzik')
+  args['upload_path'] ||= File.expand_path("#{directory}/upload")
+  args['download_path'] ||= File.expand_path("#{directory}/download")
+  args['trash_path'] ||= File.expand_path("#{directory}/trash")
+  args['log_location'] ||= File.expand_path("#{directory}/log")
+  args['google_drive_config_location'] ||= File.expand_path("#{directory}/google_drive.json")
+  args['tagging_app'] ||= 'Mp3Tag'
+
+  File.write("#{directory}/config.json", JSON.pretty_generate(args))
+when 'refresh'
+  case ARGV[1]
+  when 'cloud'
+    instantiate.refresh_cloud
+  when 'local'
+    instantiate.refresh_local
+  else
+    boom("Unknown refresh type: #{ARGV[1]}")
+  end
+when 'setup'
+  case ARGV[1]
+  when 'cloud'
+    instantiate.setup_cloud
+  when 'local'
+    instantiate(cloud: false).setup_local
+  else
+    boom("Unknown setup type: #{ARGV[1]}")
+  end
+else
+  boom("Unknown command: #{ARGV.first}")
+end

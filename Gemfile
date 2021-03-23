@@ -1,0 +1,7 @@
+source 'https://rubygems.org'
+
+gem 'google_drive', '~> 3.0'
+gem 'activesupport', '~> 6.1'
+gem 'id3tag', '~> 0.14'
+gem 'colorize', '~> 0.8'
+gem 'rb-scpt', '~> 1.0'
