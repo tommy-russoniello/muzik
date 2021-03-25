@@ -54,6 +54,8 @@ def instantiate(cloud: true)
   Muzik.new(
     apple_music: CONFIG['apple_music'],
     cloud_url: (CONFIG['cloud_url'] if cloud),
+    github_access_token: CONFIG['github_access_token'],
+    github_repo: CONFIG['github_repo'],
     google_drive_config_location: CONFIG['google_drive_config_location'],
     local_path: CONFIG['local_path'],
     upload_path: CONFIG['upload_path'],
@@ -98,6 +100,8 @@ when 'config'
     apple_music
     cloud_url
     download_path
+    github_access_token
+    github_repo
     google_drive_config_location
     local_path
     new_music_playlist_url

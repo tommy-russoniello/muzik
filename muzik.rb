@@ -5,6 +5,7 @@ require 'fileutils'
 require 'id3tag'
 require 'colorize'
 require 'rb-scpt'
+require 'octokit'
 
 class Muzik
   include Appscript
@@ -17,11 +18,13 @@ class Muzik
   attr_accessor :cloud_directory
   attr_accessor :cloud_index_csv
   attr_accessor :cloud_index_file
+  attr_accessor :github
   attr_accessor :google_drive
   attr_accessor :local_path
   attr_accessor :log_location
-  attr_accessor :upload_path
+  attr_accessor :repo
   attr_accessor :trash_path
+  attr_accessor :upload_path
 
   def initialize(**options)
     if options[:cloud_url]
@@ -30,6 +33,11 @@ class Muzik
       self.cloud_index_file =
         cloud_directory.files(q: ['name = ? and trashed = false', 'index.csv']).first
       self.cloud_index_file = nil if cloud_index_file&.trashed?
+    end
+
+    if options[:github_access_token] && options[:github_repo]
+      self.github = Octokit::Client.new(access_token: options[:github_access_token])
+      self.repo = options[:github_repo]
     end
 
     self.apple_music = app(options[:apple_music]) if options[:apple_music]
@@ -110,9 +118,15 @@ class Muzik
     csv = CSV.new('', **csv_options)
     csv << INDEX_FIELDS_CLOUD
     rows.each { |row| csv << row }
-    csv.rewind
+    io = csv.to_io
+    io.rewind
 
-    cloud_index_file.update_from_io(csv.to_io)
+    cloud_index_file.update_from_io(io)
+
+    if github?
+      io.rewind
+      update_github_library(io.read)
+    end
 
     puts('done'.green)
   rescue StandardError => error
@@ -343,12 +357,13 @@ class Muzik
       csv = CSV.new('', **csv_options)
       csv << INDEX_FIELDS_CLOUD
       rows.each { |row| csv << row }
-      csv.rewind
+      io = csv.to_io
+      io.rewind
 
       if cloud_index_file
-        cloud_index_file.update_from_io(csv.to_io)
+        cloud_index_file.update_from_io(io)
       else
-        cloud_directory.upload_from_io(csv.to_io, 'index.csv')
+        cloud_directory.upload_from_io(io, 'index.csv')
       end
     rescue StandardError => error
       puts('Failed.'.red)
@@ -356,6 +371,11 @@ class Muzik
       log_error(error)
       refresh_cloud
       return
+    end
+
+    if count.positive? && github?
+      io.rewind
+      update_github_library(io.read)
     end
 
     begin
@@ -414,6 +434,10 @@ class Muzik
     self.cloud_index_csv = CSV.parse(cloud_index_file.download_to_string, **csv_options)
     raise('Invalid headers on cloud index file.') unless
       cloud_index_csv.headers.sort == INDEX_FIELDS_CLOUD.sort
+  end
+
+  def github?
+    !!github
   end
 
   def local_csv_row_for(**fields)
@@ -488,5 +512,29 @@ class Muzik
   def update_apple_music_track(file_name, **attributes)
     track = apple_music.tracks[its.location.eq(MacTypes::Alias.path(file_name))]
     attributes.each { |field, value| track.send(field).set(to: value) }
+  end
+
+  def update_github_library(contents)
+    branch_ref = 'heads/master'
+
+    latest_sha = github.ref(repo, branch_ref).object.sha
+    base_tree = github.commit(repo, latest_sha).commit.tree.sha
+
+    library_file_name = 'library.csv'
+    version = Base64.decode64(github.contents(repo, path: 'version').content).to_i + 1
+    tree_data = { library_file_name => contents, version: version.to_s }.map do |path, data|
+      blob = github.create_blob(repo, Base64.encode64(data), 'base64')
+      { path: path, mode: '100644', type: 'blob', sha: blob }
+    end
+
+    new_tree = github.create_tree(repo, tree_data, base_tree: base_tree).sha
+    new_sha = github.create_commit(repo, "v#{version}", new_tree, latest_sha).sha
+    diff = github.compare(repo, latest_sha, new_sha)
+    return unless diff.files.any? { |file| file.filename == library_file_name }
+
+    github.update_ref(repo, branch_ref, new_sha)
+  rescue StandardError => error
+    log_error(error)
+    puts('Failed to update github library. Run `muzik refresh cloud` to update it manually.'.red)
   end
 end

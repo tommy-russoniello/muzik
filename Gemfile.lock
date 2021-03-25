@@ -65,6 +65,9 @@ GEM
     nokogiri (1.11.1)
       mini_portile2 (~> 2.5.0)
       racc (~> 1.4)
+    octokit (4.20.0)
+      faraday (>= 0.9)
+      sawyer (~> 0.8.0, >= 0.5.3)
     os (1.1.1)
     public_suffix (4.0.6)
     racc (1.5.2)
@@ -76,6 +79,9 @@ GEM
     retriable (3.1.2)
     rexml (3.2.4)
     ruby2_keywords (0.0.4)
+    sawyer (0.8.2)
+      addressable (>= 2.3.5)
+      faraday (> 0.8, < 2.0)
     signet (0.15.0)
       addressable (~> 2.3)
       faraday (>= 0.17.3, < 2.0)
@@ -96,6 +102,7 @@ DEPENDENCIES
   colorize (~> 0.8)
   google_drive (~> 3.0)
   id3tag (~> 0.14)
+  octokit (~> 4.20)
   rb-scpt (~> 1.0)
 
 BUNDLED WITH
