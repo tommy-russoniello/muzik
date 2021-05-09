@@ -278,7 +278,7 @@ class Muzik
       cleanup
     end
 
-    puts("#{count} files downloaded.".green)
+    puts("#{count} file#{count == 1 ? '' : 's'} downloaded.".green)
   rescue StandardError => error
     puts('Failed.'.red)
     log_error(error)
@@ -385,7 +385,7 @@ class Muzik
       remove_failure = true
     end
 
-    puts("#{count} files uploaded.".green)
+    puts("#{count} file#{count == 1 ? '' : 's'} uploaded.".green)
     puts
 
     if partial_failure
