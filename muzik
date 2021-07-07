@@ -54,6 +54,7 @@ def instantiate(cloud: true, external: nil)
   options = {
     cloud_url: (CONFIG['cloud_url'] if cloud),
     google_drive_config_location: CONFIG['google_drive_config_location'],
+    log_location: CONFIG['log_location'],
     trash_path: CONFIG['trash_path']
   }
   if external

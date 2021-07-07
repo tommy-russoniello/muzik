@@ -336,7 +336,7 @@ class Muzik
         count += 1
         puts(' ✓'.green)
       end
-    rescue StandardError
+    rescue StandardError => error
       log_error(error)
       partial_failure = true
     end
