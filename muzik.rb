@@ -241,12 +241,12 @@ class Muzik
         next
       end
 
+      print("#{row[:artist]} - #{row[:title]}")
+
       file = google_drive.file_by_id(row[:id])
       new_directory = "#{local_path}/#{google_drive.folder_by_id(file.parents.first).name}"
       FileUtils.mkdir_p(new_directory) unless File.directory?(new_directory)
       new_file_name = "#{new_directory}/#{file.name}"
-
-      print("#{row[:artist]} - #{row[:title]}")
 
       file.download_to_file(new_file_name)
       FileUtils.touch(new_file_name, mtime: row[:updated_at].to_i)
@@ -255,6 +255,7 @@ class Muzik
 
       puts(' ✓'.green)
     rescue StandardError => error
+      puts(' ✘'.red) if row[:artist] && row[:title]
       log_error(error)
       partial_failure = true
     end
@@ -297,6 +298,7 @@ class Muzik
       file_names = Dir["#{upload_path}/*.mp3"]
       new_songs = {}
       duplicates = []
+      artist = title = nil
       file_names.each do |file_name|
         artist = title = nil
         File.open(file_name, 'rb') do |file|
@@ -308,6 +310,8 @@ class Muzik
 
         new_songs[artist] ||= Set.new
         next duplicates << file_name if new_songs[artist].include?(title)
+
+        print("#{artist} - #{title}")
         new_songs[artist] << title
 
         unless directories[artist]
@@ -318,7 +322,6 @@ class Muzik
 
         new_file_name = "#{title}.mp3".tr('/?#', '_')
         file = directories[artist].files(q: ['name = ? and trashed = false', new_file_name]).first
-        print("#{artist} - #{title}")
         if file && !file.trashed?
           file.update_from_file(file_name)
           file = google_drive.file_by_id(file.id)
@@ -337,6 +340,7 @@ class Muzik
         puts(' ✓'.green)
       end
     rescue StandardError => error
+      puts(' ✘'.red) if artist && title
       log_error(error)
       partial_failure = true
     end
