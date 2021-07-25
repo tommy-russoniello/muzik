@@ -49,7 +49,7 @@ rescue StandardError
 end
 
 def instantiate(cloud: true, external: nil)
-  require_relative './muzik'
+  require 'muzik'
 
   options = {
     cloud_url: (CONFIG['cloud_url'] if cloud),
@@ -69,7 +69,7 @@ def instantiate(cloud: true, external: nil)
     )
   end
 
-  Muzik.new(**options)
+  Muzik::Client.new(**options)
 end
 
 def get_external_path(value)
