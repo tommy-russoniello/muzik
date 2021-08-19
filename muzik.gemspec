@@ -14,7 +14,6 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'octokit', '>= 4.20'
   spec.add_dependency 'google_drive', '>= 3.0'
-  spec.add_dependency 'activesupport', '>= 6.1'
   spec.add_dependency 'id3tag', '>= 0.14'
   spec.add_dependency 'colorize', '>= 0.8'
   spec.add_dependency 'rb-scpt', '>= 1.0'
