@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name        = 'muzik'
-  spec.version     = '0.1.0'
+  spec.version     = '0.2.0'
   spec.licenses    = ['MIT']
   spec.summary     = 'Personal music manager'
   spec.description = 'Muzik manages your personal library of music files by syncing it across your devices using Google Drive.'
