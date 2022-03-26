@@ -10,6 +10,7 @@ Gem::Specification.new do |spec|
   spec.homepage    = 'https://github.com/tommy-russoniello/muzik'
   spec.metadata    = { 'source_code_uri' => 'https://github.com/tommy-russoniello/muzik' }
   spec.executables << 'muzik'
+
   spec.required_ruby_version = '>= 2.7'
 
   spec.add_dependency 'octokit', '~> 4.20'

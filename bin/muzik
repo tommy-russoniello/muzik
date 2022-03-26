@@ -98,7 +98,7 @@ begin
     system('open', CONFIG['download_path'], '-a', CONFIG['tagging_app'])
   when 'download'
     system(
-      'youtube-dl',
+      'yt-dlp',
       '-x',
       '--audio-format',
       'mp3',
