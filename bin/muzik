@@ -4,12 +4,13 @@ if ARGV.empty?
   puts('Available commands:')
   [
     'sync [external PATH]',
-    'upload',
+    'upload [nogithub]',
     'tag',
     'download',
     'stage',
     'init',
     'config [FIELD=VALUE...]',
+    'patch',
     'refresh [cloud|local|external PATH]',
     'setup [cloud|local|external PATH]'
   ].each { |command| puts("  #{command}") }
@@ -48,7 +49,7 @@ rescue StandardError
   boom('Error parsing config file.')
 end
 
-def instantiate(cloud: true, external: nil)
+def instantiate(cloud: true, external: nil, github: true)
   require 'muzik'
 
   options = {
@@ -62,11 +63,15 @@ def instantiate(cloud: true, external: nil)
   else
     options.merge!(
       apple_music: CONFIG['apple_music'],
-      github_access_token: CONFIG['github_access_token'],
-      github_repo: CONFIG['github_repo'],
       local_path: CONFIG['local_path'],
       upload_path: CONFIG['upload_path']
     )
+    if github
+      options.merge!(
+        github_access_token: CONFIG['github_access_token'],
+        github_repo: CONFIG['github_repo']
+      )
+    end
   end
 
   Muzik::Client.new(**options)
@@ -93,7 +98,14 @@ begin
       boom("Unknown sync option: #{ARGV[1]}")
     end
   when 'upload'
-    instantiate.upload
+    case ARGV[1]
+    when nil
+      instantiate.upload
+    when 'nogithub'
+      instantiate(github: false).upload
+    else
+      boom("Unknown upload option: #{ARGV[1]}")
+    end
   when 'tag'
     system('open', CONFIG['download_path'], '-a', CONFIG['tagging_app'])
   when 'download'
@@ -133,6 +145,9 @@ begin
       GoogleDrive::Session.from_config(location)
       puts('Google Drive authentication updated successfully.'.green)
     end
+  when 'patch'
+    instantiate(github: false).upload
+    instantiate.refresh_cloud
   when 'refresh'
     case ARGV[1]
     when 'cloud'
