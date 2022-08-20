@@ -115,6 +115,35 @@ begin
     end
 
     puts("#{file_count} file#{file_count == 1 ? '' : 's'} staged for upload.".green)
+  when 'auth'
+    location = CONFIG['google_drive_config_location']
+    require 'google_drive'
+    begin
+      GoogleDrive::Session.from_config(location)
+      puts('Google Drive authentication is working properly.'.green)
+    rescue Signet::AuthorizationError
+      begin
+        google_drive_config = JSON.parse(File.read(location))
+      rescue StandardError
+        boom('Error parsing Google Drive config file.')
+      end
+
+      google_drive_config = google_drive_config.slice('client_id', 'client_secret')
+      File.write(location, JSON.pretty_generate(google_drive_config))
+      GoogleDrive::Session.from_config(location)
+      puts('Google Drive authentication updated successfully.'.green)
+    end
+  when 'refresh'
+    case ARGV[1]
+    when 'cloud'
+      instantiate.refresh_cloud
+    when 'local'
+      instantiate.refresh_local
+    when 'external'
+      instantiate(external: get_external_path(ARGV[2])).refresh_local
+    else
+      boom("Unknown refresh type: #{ARGV[1]}")
+    end
   when 'config'
     begin
       args = ARGV[1..].map { |arg| arg.split('=', 2) }.to_h
@@ -147,17 +176,6 @@ begin
     args['tagging_app'] ||= 'Mp3Tag'
 
     File.write("#{directory}/config.json", JSON.pretty_generate(args))
-  when 'refresh'
-    case ARGV[1]
-    when 'cloud'
-      instantiate.refresh_cloud
-    when 'local'
-      instantiate.refresh_local
-    when 'external'
-      instantiate(external: get_external_path(ARGV[2])).refresh_local
-    else
-      boom("Unknown refresh type: #{ARGV[1]}")
-    end
   when 'setup'
     case ARGV[1]
     when 'cloud'
@@ -168,24 +186,6 @@ begin
       instantiate(cloud: false, external: get_external_path(ARGV[2])).setup_local
     else
       boom("Unknown setup type: #{ARGV[1]}")
-    end
-  when 'auth'
-    location = CONFIG['google_drive_config_location']
-    require 'google_drive'
-    begin
-      GoogleDrive::Session.from_config(location)
-      puts('Google Drive authentication is working properly.'.green)
-    rescue Signet::AuthorizationError
-      begin
-        google_drive_config = JSON.parse(File.read(location))
-      rescue StandardError
-        boom('Error parsing Google Drive config file.')
-      end
-
-      google_drive_config = google_drive_config.slice('client_id', 'client_secret')
-      File.write(location, JSON.pretty_generate(google_drive_config))
-      GoogleDrive::Session.from_config(location)
-      puts('Google Drive authentication updated successfully.'.green)
     end
   else
     boom("Unknown command: #{ARGV.first}")
