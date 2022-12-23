@@ -308,13 +308,15 @@ module Muzik
 
           unless directories[artist]
             directories[artist] =
-              cloud_directory.subfolders(q: ['name = ? and trashed = false', artist]).first ||
-              cloud_directory.create_subfolder(artist)
+              cloud_directory.subfolders(q: ['name = ? and trashed = false', artist]).first
+            if directories[artist].nil? || directories[artist].title != artist
+              directories[artist] = cloud_directory.create_subfolder(artist)
+            end
           end
 
           new_file_name = "#{title}.mp3".tr('/?#', '_')
           file = directories[artist].files(q: ['name = ? and trashed = false', new_file_name]).first
-          if file && !file.trashed?
+          if file && !file.trashed? && file.title == new_file_name
             file.update_from_file(file_name)
             file = google_drive.file_by_id(file.id)
           else
