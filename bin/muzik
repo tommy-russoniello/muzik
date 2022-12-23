@@ -17,12 +17,14 @@ if ARGV.empty?
   exit(true)
 end
 
+base_path = "~/muzik#{'-debug' if ARGV.last == '-d'}"
+
 if ARGV.first == 'init'
   create_dir = lambda do |name|
     Dir.mkdir(name) unless Dir.exist?(name)
   end
 
-  directory = File.expand_path('~/muzik')
+  directory = File.expand_path(base_path)
   create_dir.call(directory)
   create_dir.call("#{directory}/download")
   create_dir.call("#{directory}/upload")
@@ -38,7 +40,7 @@ def boom(message)
   exit(false)
 end
 
-location = File.expand_path('~/muzik/config.json')
+location = File.expand_path("#{base_path}/config.json")
 boom('No config file found. Run `muzik init` to initialize it.') unless File.exists?(location)
 
 require 'json'
@@ -78,7 +80,7 @@ def instantiate(cloud: true, external: nil, github: true)
 end
 
 def get_external_path(value)
-  boom('No external path provided') unless value
+  boom('No external path provided') unless value && value != '-d'
 
   path = File.expand_path(value.to_s)
   boom("Invalid external path: #{value}") unless File.exists?(path)
@@ -90,7 +92,7 @@ begin
   case ARGV.first
   when 'sync'
     case ARGV[1]
-    when nil
+    when nil, '-d'
       instantiate.sync
     when 'external'
       instantiate(external: get_external_path(ARGV[2])).sync
@@ -99,7 +101,7 @@ begin
     end
   when 'upload'
     case ARGV[1]
-    when nil
+    when nil, '-d'
       instantiate.upload
     when 'nogithub'
       instantiate(github: false).upload
@@ -157,7 +159,8 @@ begin
     when 'external'
       instantiate(external: get_external_path(ARGV[2])).refresh_local
     else
-      boom("Unknown refresh type: #{ARGV[1]}")
+      unknown_refresh_type = ARGV[1] == '-d' ? '' : ARGV[1]
+      boom("Unknown refresh type: #{unknown_refresh_type}")
     end
   when 'config'
     begin
@@ -182,7 +185,7 @@ begin
     args.each { |arg, _| boom("Unkown argument: #{arg}") unless valid_args.include?(arg) }
     args = CONFIG.merge(args)
 
-    directory = File.expand_path('~/muzik')
+    directory = File.expand_path(base_path)
     args['upload_path'] ||= File.expand_path("#{directory}/upload")
     args['download_path'] ||= File.expand_path("#{directory}/download")
     args['trash_path'] ||= File.expand_path("#{directory}/trash")
@@ -200,7 +203,8 @@ begin
     when 'external'
       instantiate(cloud: false, external: get_external_path(ARGV[2])).setup_local
     else
-      boom("Unknown setup type: #{ARGV[1]}")
+      unknown_setup_type = ARGV[1] == '-d' ? '' : ARGV[1]
+      boom("Unknown setup type: #{unknown_setup_type}")
     end
   else
     boom("Unknown command: #{ARGV.first}")
